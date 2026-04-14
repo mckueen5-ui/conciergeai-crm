@@ -10,9 +10,18 @@ type Expert = {
   status: string;
 };
 
+type Template = {
+  id: number;
+  icon: string;
+  title: string;
+  desc: string;
+};
+
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+
+  // Experts state
   const [experts, setExperts] = useState<Expert[]>([
     { id: 1, name: '李明', industry: '導師', email: 'liming@example.com', status: '已認證' },
     { id: 2, name: '王芳', industry: '律師', email: 'wangfang@example.com', status: '未認證' }
@@ -22,6 +31,23 @@ export default function Home() {
     name: '',
     industry: '',
     email: ''
+  });
+
+  // Templates state (CRUD)
+  const [templates, setTemplates] = useState<Template[]>([
+    { id: 1, icon: '👨‍🏫', title: '導師', desc: '教育培訓專家' },
+    { id: 2, icon: '⚖️', title: '律師', desc: '法律諮詢服務' },
+    { id: 3, icon: '🔧', title: '水管工', desc: '家居維修服務' },
+    { id: 4, icon: '📊', title: '會計師', desc: '財務諮詢服務' },
+    { id: 5, icon: '📷', title: '攝影師', desc: '專業攝影服務' },
+    { id: 6, icon: '💪', title: '健身教練', desc: '健身指導服務' }
+  ]);
+  const [showTemplateForm, setShowTemplateForm] = useState<boolean>(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<number | null>(null);
+  const [templateForm, setTemplateForm] = useState<{ icon: string; title: string; desc: string }>({
+    icon: '',
+    title: '',
+    desc: ''
   });
 
   const handleAddExpert = () => {
@@ -36,6 +62,35 @@ export default function Home() {
     setExperts(experts.filter((e) => e.id !== id));
   };
 
+  // Template CRUD
+  const openNewTemplate = () => {
+    setEditingTemplateId(null);
+    setTemplateForm({ icon: '', title: '', desc: '' });
+    setShowTemplateForm(true);
+  };
+
+  const openEditTemplate = (t: Template) => {
+    setEditingTemplateId(t.id);
+    setTemplateForm({ icon: t.icon, title: t.title, desc: t.desc });
+    setShowTemplateForm(true);
+  };
+
+  const saveTemplate = () => {
+    if (!templateForm.title || !templateForm.icon) return;
+    if (editingTemplateId !== null) {
+      setTemplates(templates.map((t) => (t.id === editingTemplateId ? { ...t, ...templateForm } : t)));
+    } else {
+      setTemplates([...templates, { id: Date.now(), ...templateForm }]);
+    }
+    setShowTemplateForm(false);
+    setEditingTemplateId(null);
+    setTemplateForm({ icon: '', title: '', desc: '' });
+  };
+
+  const deleteTemplate = (id: number) => {
+    setTemplates(templates.filter((t) => t.id !== id));
+  };
+
   const tabs = [
     { id: 'dashboard', label: '儀表板', icon: '📊' },
     { id: 'experts', label: '專家管理', icon: '👥' },
@@ -43,14 +98,17 @@ export default function Home() {
     { id: 'chat', label: 'WhatsApp', icon: '💬' }
   ];
 
-  const templates = [
-    { icon: '👨‍🏫', title: '導師', desc: '教育培訓專家' },
-    { icon: '⚖️', title: '律師', desc: '法律諮詢服務' },
-    { icon: '🔧', title: '水管工', desc: '家居維修服務' },
-    { icon: '📊', title: '會計師', desc: '財務諮詢服務' },
-    { icon: '📷', title: '攝影師', desc: '專業攝影服務' },
-    { icon: '💪', title: '健身教練', desc: '健身指導服務' }
-  ];
+  const inputStyle = {
+    width: '100%',
+    padding: '10px',
+    marginBottom: '10px',
+    backgroundColor: '#334155',
+    border: '1px solid #475569',
+    color: 'white',
+    borderRadius: '4px',
+    fontSize: '14px',
+    boxSizing: 'border-box' as const
+  };
 
   return (
     <div style={{ display: 'flex', height: '100vh', backgroundColor: '#0f172a', color: '#e2e8f0', fontFamily: 'system-ui, sans-serif' }}>
@@ -126,9 +184,9 @@ export default function Home() {
               </div>
               {showAddForm && (
                 <div style={{ backgroundColor: '#1e293b', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #334155' }}>
-                  <input type="text" placeholder="名字" value={newExpert.name} onChange={(e) => setNewExpert({ ...newExpert, name: e.target.value })} style={{ width: '100%', padding: '10px', marginBottom: '10px', backgroundColor: '#334155', border: '1px solid #475569', color: 'white', borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box' }} />
-                  <input type="text" placeholder="行業" value={newExpert.industry} onChange={(e) => setNewExpert({ ...newExpert, industry: e.target.value })} style={{ width: '100%', padding: '10px', marginBottom: '10px', backgroundColor: '#334155', border: '1px solid #475569', color: 'white', borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box' }} />
-                  <input type="email" placeholder="郵箱" value={newExpert.email} onChange={(e) => setNewExpert({ ...newExpert, email: e.target.value })} style={{ width: '100%', padding: '10px', marginBottom: '15px', backgroundColor: '#334155', border: '1px solid #475569', color: 'white', borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box' }} />
+                  <input type="text" placeholder="名字" value={newExpert.name} onChange={(e) => setNewExpert({ ...newExpert, name: e.target.value })} style={inputStyle} />
+                  <input type="text" placeholder="行業" value={newExpert.industry} onChange={(e) => setNewExpert({ ...newExpert, industry: e.target.value })} style={inputStyle} />
+                  <input type="email" placeholder="郵箱" value={newExpert.email} onChange={(e) => setNewExpert({ ...newExpert, email: e.target.value })} style={{ ...inputStyle, marginBottom: '15px' }} />
                   <button onClick={handleAddExpert} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}>保存</button>
                 </div>
               )}
@@ -151,13 +209,34 @@ export default function Home() {
 
           {activeTab === 'templates' && (
             <div>
-              <h2 style={{ fontSize: '22px', fontWeight: 600, marginBottom: '20px' }}>專家模板庫</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 600 }}>專家模板庫</h2>
+                <button onClick={openNewTemplate} style={{ backgroundColor: '#0ea5e9', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}>+ 新增模板</button>
+              </div>
+
+              {showTemplateForm && (
+                <div style={{ backgroundColor: '#1e293b', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #334155' }}>
+                  <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: 600 }}>{editingTemplateId !== null ? '編輯模板' : '新增模板'}</h3>
+                  <input type="text" placeholder="圖示 (例如: 👨‍🏫 或 emoji)" value={templateForm.icon} onChange={(e) => setTemplateForm({ ...templateForm, icon: e.target.value })} style={inputStyle} />
+                  <input type="text" placeholder="職業名稱 (例如: 設計師)" value={templateForm.title} onChange={(e) => setTemplateForm({ ...templateForm, title: e.target.value })} style={inputStyle} />
+                  <input type="text" placeholder="描述 (例如: 平面設計服務)" value={templateForm.desc} onChange={(e) => setTemplateForm({ ...templateForm, desc: e.target.value })} style={{ ...inputStyle, marginBottom: '15px' }} />
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button onClick={saveTemplate} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}>保存</button>
+                    <button onClick={() => { setShowTemplateForm(false); setEditingTemplateId(null); }} style={{ backgroundColor: '#475569', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}>取消</button>
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '15px' }}>
-                {templates.map((t, i) => (
-                  <div key={i} style={{ backgroundColor: '#1e293b', padding: '25px', borderRadius: '8px', border: '1px solid #334155', textAlign: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                {templates.map((t) => (
+                  <div key={t.id} style={{ backgroundColor: '#1e293b', padding: '25px', borderRadius: '8px', border: '1px solid #334155', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <p style={{ fontSize: '40px', margin: '0 0 10px 0' }}>{t.icon}</p>
                     <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: 600 }}>{t.title}</h3>
-                    <p style={{ margin: 0, opacity: 0.75, fontSize: '14px' }}>{t.desc}</p>
+                    <p style={{ margin: '0 0 15px 0', opacity: 0.75, fontSize: '14px' }}>{t.desc}</p>
+                    <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                      <button onClick={() => openEditTemplate(t)} style={{ flex: 1, padding: '8px', backgroundColor: '#334155', border: 'none', color: 'white', cursor: 'pointer', borderRadius: '4px', fontSize: '13px', fontWeight: 500 }}>編輯</button>
+                      <button onClick={() => deleteTemplate(t.id)} style={{ flex: 1, padding: '8px', backgroundColor: '#dc2626', border: 'none', color: 'white', cursor: 'pointer', borderRadius: '4px', fontSize: '13px', fontWeight: 500 }}>刪除</button>
+                    </div>
                   </div>
                 ))}
               </div>
