@@ -1,392 +1,273 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { Menu, Plus, Edit2, Trash2, MessageCircle, BarChart3, X } from 'lucide-react'
+import { useState } from 'react';
 
 export default function Home() {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [experts, setExperts] = useState([
-    { id: 1, name: '李明', industry: '導師', email: 'li@example.com', status: '已邀請' },
-    { id: 2, name: '王女士', industry: '律師', email: 'wang@example.com', status: '未回應' }
-  ])
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [newExpert, setNewExpert] = useState({ name: '', industry: '', email: '' })
-
-  const stats = {
-    totalExperts: experts.length,
-    invited: experts.filter(e => e.status === '已邀請').length,
-    responded: experts.filter(e => e.status === '已回應').length,
-    successRate: '75%'
-  }
+    { id: 1, name: '李明', industry: '導師', email: 'liming@example.com', status: '已認證' },
+    { id: 2, name: '王芳', industry: '律師', email: 'wangfang@example.com', status: '未認證' }
+  ]);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newExpert, setNewExpert] = useState({ name: '', industry: '', email: '' });
 
   const handleAddExpert = () => {
-    if (newExpert.name && newExpert.email) {
-      setExperts([...experts, {
-        id: Date.now(),
-        name: newExpert.name,
-        industry: newExpert.industry,
-        email: newExpert.email,
-        status: '待邀請'
-      }])
-      setNewExpert({ name: '', industry: '', email: '' })
-      setShowAddForm(false)
+    if (newExpert.name && newExpert.industry && newExpert.email) {
+      setExperts([...experts, { id: Date.now(), ...newExpert, status: '待認證' }]);
+      setNewExpert({ name: '', industry: '', email: '' });
+      setShowAddForm(false);
     }
-  }
+  };
 
   const handleDeleteExpert = (id) => {
-    setExperts(experts.filter(e => e.id !== id))
-  }
-
-  const templates = [
-    { title: '導師', icon: '👨‍🏫', desc: '邀請教育專家' },
-    { title: '律師', icon: '⚖️', desc: '邀請法律顧問' },
-    { title: '水管工', icon: '🔧', desc: '邀請技術專家' },
-    { title: '會計師', icon: '💼', desc: '邀請財務顧問' },
-    { title: '攝影師', icon: '📸', desc: '邀請攝影服務' },
-    { title: '健身教練', icon: '💪', desc: '邀請健身專家' }
-  ]
+    setExperts(experts.filter(e => e.id !== id));
+  };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', backgroundColor: '#0f172a' }}>
+    <div style={{ display: 'flex', height: '100vh', backgroundColor: '#0f172a', color: '#e2e8f0', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {/* Sidebar */}
       <div style={{
-        width: sidebarOpen ? '280px' : '80px',
+        width: sidebarOpen ? '250px' : '60px',
         backgroundColor: '#1e293b',
-        color: '#e2e8f0',
+        borderRight: '1px solid #334155',
         transition: 'width 0.3s',
         display: 'flex',
-        flexDirection: 'column',
-        borderRight: '1px solid #334155'
+        flexDirection: 'column'
       }}>
-        <div style={{ padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {sidebarOpen && <h2 style={{ margin: 0, fontSize: '18px' }}>CRM</h2>}
+        <div style={{ padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {sidebarOpen && <h2 style={{ margin: 0, fontSize: '18px' }}>菜單</h2>}
           <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{
             background: 'none',
             border: 'none',
-            color: '#e2e8f0',
+            color: '#0ea5e9',
             cursor: 'pointer',
+            padding: '5px',
             fontSize: '20px'
           }}>
-            <Menu size={24} />
+            ☰
           </button>
         </div>
-
-        <nav style={{ flex: 1, padding: '10px' }}>
-          {['dashboard', 'experts', 'templates', 'chat'].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={{
-              width: '100%',
-              padding: '12px',
-              marginBottom: '8px',
-              backgroundColor: activeTab === tab ? '#0ea5e9' : 'transparent',
-              color: activeTab === tab ? '#fff' : '#cbd5e1',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              textAlign: 'left',
-              fontSize: '14px',
-              fontWeight: activeTab === tab ? '600' : '400',
-              transition: 'all 0.2s'
-            }}>
-              {sidebarOpen ? (tab.charAt(0).toUpperCase() + tab.slice(1)) : (tab[0].toUpperCase())}
+        <nav style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          {[
+            { id: 'dashboard', label: '儀表板', icon: '📊' },
+            { id: 'experts', label: '專家管理', icon: '👥' },
+            { id: 'templates', label: '模板庫', icon: '📋' },
+            { id: 'chat', label: 'WhatsApp', icon: '💬' }
+          ].map(item => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              style={{
+                width: '100%',
+                padding: '15px 20px',
+                border: 'none',
+                backgroundColor: activeTab === item.id ? '#0ea5e9' : 'transparent',
+                color: activeTab === item.id ? '#0f172a' : '#e2e8f0',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                transition: 'background-color 0.2s',
+                justifyContent: sidebarOpen ? 'flex-start' : 'center',
+                fontSize: '14px',
+                fontWeight: activeTab === item.id ? 600 : 400
+              }}
+            >
+              <span style={{ fontSize: '18px' }}>{item.icon}</span>
+              {sidebarOpen && item.label}
             </button>
           ))}
         </nav>
       </div>
 
       {/* Main Content */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '30px' }}>
-        <h1 style={{ color: '#fff', marginBottom: '30px', fontSize: '28px' }}>CRM Dashboard</h1>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Header */}
+        <div style={{
+          padding: '20px',
+          borderBottom: '1px solid #334155',
+          backgroundColor: '#1e293b'
+        }}>
+          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700 }}>CRM Dashboard</h1>
+        </div>
 
-        {activeTab === 'dashboard' && (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '40px' }}>
-              {[
-                { label: '總專家數', value: stats.totalExperts },
-                { label: '已邀請', value: stats.invited },
-                { label: '已回應', value: stats.responded },
-                { label: '成功率', value: stats.successRate }
-              ].map((stat, i) => (
-                <div key={i} style={{
-                  backgroundColor: '#1e293b',
-                  padding: '20px',
-                  borderRadius: '8px',
-                  border: '1px solid #334155'
-                }}>
-                  <p style={{ color: '#94a3b8', margin: '0 0 10px 0', fontSize: '14px' }}>{stat.label}</p>
-                  <p style={{ color: '#0ea5e9', margin: 0, fontSize: '32px', fontWeight: 'bold' }}>{stat.value}</p>
+        {/* Content Area */}
+        <div style={{ flex: 1, overflow: 'auto', padding: '20px' }}>
+          {/* Dashboard Tab */}
+          {activeTab === 'dashboard' && (
+            <div>
+              <h2 style={{ fontSize: '22px', fontWeight: 600, marginBottom: '20px' }}>儀表板概覽</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+                <div style={{ backgroundColor: '#334155', padding: '20px', borderRadius: '8px', border: '1px solid #475569' }}>
+                  <p style={{ margin: '0 0 10px 0', opacity: 0.8, fontSize: '14px' }}>專家總數</p>
+                  <p style={{ margin: 0, fontSize: '32px', fontWeight: 700, color: '#0ea5e9' }}>{experts.length}</p>
                 </div>
-              ))}
-            </div>
-
-            <div style={{ backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155', overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#0f172a', borderBottom: '1px solid #334155' }}>
-                    <th style={{ padding: '15px', textAlign: 'left', color: '#cbd5e1', fontWeight: '600' }}>名字</th>
-                    <th style={{ padding: '15px', textAlign: 'left', color: '#cbd5e1', fontWeight: '600' }}>行業</th>
-                    <th style={{ padding: '15px', textAlign: 'left', color: '#cbd5e1', fontWeight: '600' }}>電郵</th>
-                    <th style={{ padding: '15px', textAlign: 'left', color: '#cbd5e1', fontWeight: '600' }}>狀態</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {experts.map(expert => (
-                    <tr key={expert.id} style={{ borderBottom: '1px solid #334155' }}>
-                      <td style={{ padding: '15px', color: '#e2e8f0' }}>{expert.name}</td>
-                      <td style={{ padding: '15px', color: '#e2e8f0' }}>{expert.industry}</td>
-                      <td style={{ padding: '15px', color: '#e2e8f0' }}>{expert.email}</td>
-                      <td style={{ padding: '15px', color: '#0ea5e9' }}>{expert.status}</td>
+                <div style={{ backgroundColor: '#334155', padding: '20px', borderRadius: '8px', border: '1px solid #475569' }}>
+                  <p style={{ margin: '0 0 10px 0', opacity: 0.8, fontSize: '14px' }}>已認證</p>
+                  <p style={{ margin: 0, fontSize: '32px', fontWeight: 700, color: '#10b981' }}>{experts.filter(e => e.status === '已認證').length}</p>
+                </div>
+                <div style={{ backgroundColor: '#334155', padding: '20px', borderRadius: '8px', border: '1px solid #475569' }}>
+                  <p style={{ margin: '0 0 10px 0', opacity: 0.8, fontSize: '14px' }}>待認證</p>
+                  <p style={{ margin: 0, fontSize: '32px', fontWeight: 700, color: '#f59e0b' }}>{experts.filter(e => e.status === '待認證').length}</p>
+                </div>
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '15px' }}>最近專家</h3>
+              <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid #334155' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#1e293b', borderBottom: '2px solid #334155' }}>
+                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>名字</th>
+                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>行業</th>
+                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>郵箱</th>
+                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>狀態</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {experts.map(expert => (
+                      <tr key={expert.id} style={{ borderBottom: '1px solid #334155' }}>
+                        <td style={{ padding: '12px' }}>{expert.name}</td>
+                        <td style={{ padding: '12px' }}>{expert.industry}</td>
+                        <td style={{ padding: '12px', fontSize: '12px' }}>{expert.email}</td>
+                        <td style={{ padding: '12px', color: expert.status === '已認證' ? '#10b981' : '#f59e0b', fontWeight: 500 }}>{expert.status}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {activeTab === 'experts' && (
-          <div>
-            <button onClick={() => setShowAddForm(!showAddForm)} style={{
-              marginBottom: '20px',
-              padding: '12px 20px',
-              backgroundColor: '#0ea5e9',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              <Plus size={18} /> 添加專家
-            </button>
-
-            {showAddForm && (
-              <div style={{
-                backgroundColor: '#1e293b',
-                padding: '20px',
-                borderRadius: '8px',
-                marginBottom: '20px',
-                border: '1px solid #334155'
-              }}>
-                <input
-                  type="text"
-                  placeholder="名字"
-                  value={newExpert.name}
-                  onChange={(e) => setNewExpert({...newExpert, name: e.target.value})}
+          {/* Experts Tab */}
+          {activeTab === 'experts' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 600 }}>專家管理</h2>
+                <button
+                  onClick={() => setShowAddForm(!showAddForm)}
                   style={{
-                    width: '100%',
-                    padding: '10px',
-                    marginBottom: '10px',
-                    backgroundColor: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '4px',
-                    color: '#e2e8f0',
-                    boxSizing: 'border-box'
+                    backgroundColor: '#0ea5e9',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                    fontSize: '14px'
                   }}
-                />
-                <input
-                  type="text"
-                  placeholder="行業"
-                  value={newExpert.industry}
-                  onChange={(e) => setNewExpert({...newExpert, industry: e.target.value})}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    marginBottom: '10px',
-                    backgroundColor: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '4px',
-                    color: '#e2e8f0',
-                    boxSizing: 'border-box'
-                  }}
-                />
-                <input
-                  type="email"
-                  placeholder="電郵"
-                  value={newExpert.email}
-                  onChange={(e) => setNewExpert({...newExpert, email: e.target.value})}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    marginBottom: '10px',
-                    backgroundColor: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '4px',
-                    color: '#e2e8f0',
-                    boxSizing: 'border-box'
-                  }}
-                />
-                <button onClick={handleAddExpert} style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#10b981',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  marginRight: '10px'
-                }}>
-                  保存
-                </button>
-                <button onClick={() => setShowAddForm(false)} style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#ef4444',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}>
-                  取消
+                >
+                  + 添加專家
                 </button>
               </div>
-            )}
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-              {experts.map(expert => (
-                <div key={expert.id} style={{
-                  backgroundColor: '#1e293b',
-                  padding: '20px',
-                  borderRadius: '8px',
-                  border: '1px solid #334155'
-                }}>
-                  <h3 style={{ color: '#e2e8f0', marginBottom: '10px' }}>{expert.name}</h3>
-                  <p style={{ color: '#94a3b8', margin: '5px 0' }}>{expert.industry}</p>
-                  <p style={{ color: '#94a3b8', margin: '5px 0' }}>{expert.email}</p>
-                  <p style={{ color: '#0ea5e9', margin: '10px 0' }}>{expert.status}</p>
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                    <button style={{
-                      flex: 1,
-                      padding: '8px',
-                      backgroundColor: '#3b82f6',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '5px'
-                    }}>
-                      <Edit2 size={16} /> 編輯
-                    </button>
-                    <button onClick={() => handleDeleteExpert(expert.id)} style={{
-                      flex: 1,
-                      padding: '8px',
-                      backgroundColor: '#ef4444',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '5px'
-                    }}>
-                      <Trash2 size={16} /> 刪除
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'templates' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '20px' }}>
-            {templates.map((template, i) => (
-              <div key={i} style={{
-                backgroundColor: '#1e293b',
-                padding: '25px',
-                borderRadius: '8px',
-                border: '1px solid #334155',
-                textAlign: 'center',
-                cursor: 'pointer'
-              }}>
-                <div style={{ fontSize: '40px', marginBottom: '15px' }}>{template.icon}</div>
-                <h3 style={{ color: '#e2e8f0', marginBottom: '8px' }}>{template.title}</h3>
-                <p style={{ color: '#94a3b8', margin: 0, fontSize: '14px' }}>{template.desc}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'chat' && (
-          <div>
-            <div style={{
-              backgroundColor: '#1e293b',
-              padding: '25px',
-              borderRadius: '8px',
-              border: '1px solid #334155',
-              maxWidth: '600px'
-            }}>
-              <h3 style={{ color: '#e2e8f0', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <MessageCircle size={24} /> WhatsApp 聯絡面板
-              </h3>
-              <p style={{ color: '#94a3b8', marginBottom: '20px' }}>選擇專家並通過 WhatsApp 發送邀請</p>
-
-              <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '20px' }}>
-                {experts.map(expert => (
-                  <div key={expert.id} style={{
-                    padding: '12px',
-                    backgroundColor: '#0f172a',
-                    borderRadius: '4px',
-                    marginBottom: '8px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    border: '1px solid #334155'
-                  }}>
-                    <div>
-                      <p style={{ color: '#e2e8f0', margin: '0 0 4px 0', fontWeight: '500' }}>{expert.name}</p>
-                      <p style={{ color: '#94a3b8', margin: 0, fontSize: '14px' }}>{expert.email}</p>
-                    </div>
-                    <button style={{
-                      padding: '8px 16px',
+              {showAddForm && (
+                <div style={{ backgroundColor: '#1e293b', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #334155' }}>
+                  <input
+                    type="text"
+                    placeholder="名字"
+                    value={newExpert.name}
+                    onChange={(e) => setNewExpert({ ...newExpert, name: e.target.value })}
+                    style={{ width: '100%', padding: '10px', marginBottom: '10px', backgroundColor: '#334155', border: '1px solid #475569', color: 'white', borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box' }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="行業"
+                    value={newExpert.industry}
+                    onChange={(e) => setNewExpert({ ...newExpert, industry: e.target.value })}
+                    style={{ width: '100%', padding: '10px', marginBottom: '10px', backgroundColor: '#334155', border: '1px solid #475569', color: 'white', borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box' }}
+                  />
+                  <input
+                    type="email"
+                    placeholder="郵箱"
+                    value={newExpert.email}
+                    onChange={(e) => setNewExpert({ ...newExpert, email: e.target.value })}
+                    style={{ width: '100%', padding: '10px', marginBottom: '15px', backgroundColor: '#334155', border: '1px solid #475569', color: 'white', borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box' }}
+                  />
+                  <button
+                    onClick={handleAddExpert}
+                    style={{
                       backgroundColor: '#10b981',
-                      color: '#fff',
+                      color: 'white',
                       border: 'none',
-                      borderRadius: '4px',
+                      padding: '10px 20px',
+                      borderRadius: '6px',
                       cursor: 'pointer',
-                      fontSize: '12px'
-                    }}>
-                      發送
-                    </button>
+                      fontWeight: 500,
+                      fontSize: '14px'
+                    }}
+                  >
+                    保存
+                  </button>
+                </div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+                {experts.map(expert => (
+                  <div
+                    key={expert.id}
+                    style={{
+                      backgroundColor: '#1e293b',
+                      padding: '20px',
+                      borderRadius: '8px',
+                      border: '1px solid #334155'
+                    }}
+                  >
+                    <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: 600 }}>{expert.name}</h3>
+                    <p style={{ margin: '5px 0', opacity: 0.8, fontSize: '14px' }}>行業: {expert.industry}</p>
+                    <p style={{ margin: '5px 0', opacity: 0.8, fontSize: '14px' }}>郵箱: {expert.email}</p>
+                    <p style={{ margin: '10px 0 0 0', color: expert.status === '已認證' ? '#10b981' : '#f59e0b', fontWeight: 500, fontSize: '14px' }}>狀態: {expert.status}</p>
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+                      <button style={{ flex: 1, padding: '8px', backgroundColor: '#334155', border: 'none', color: 'white', cursor: 'pointer', borderRadius: '4px', fontSize: '14px', fontWeight: 500 }}>
+                        編輯
+                      </button>
+                      <button
+                        onClick={() => handleDeleteExpert(expert.id)}
+                        style={{ flex: 1, padding: '8px', backgroundColor: '#dc2626', border: 'none', color: 'white', cursor: 'pointer', borderRadius: '4px', fontSize: '14px', fontWeight: 500 }}
+                      >
+                        刪除
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
-
-              <textarea
-                placeholder="自訂訊息..."
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  backgroundColor: '#0f172a',
-                  border: '1px solid #334155',
-                  borderRadius: '4px',
-                  color: '#e2e8f0',
-                  boxSizing: 'border-box',
-                  minHeight: '100px',
-                  fontFamily: 'inherit'
-                }}
-              />
-              <button style={{
-                marginTop: '15px',
-                width: '100%',
-                padding: '12px',
-                backgroundColor: '#0ea5e9',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: '600'
-              }}>
-                發送訊息
-              </button>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Templates Tab */}
+          {activeTab === 'templates' && (
+            <div>
+              <h2 style={{ fontSize: '22px', fontWeight: 600, marginBottom: '20px' }}>專家模板庫</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '15px' }}>
+                {[
+                  { icon: '👨‍🏫', title: '導師', desc: '教育培訓專家' },
+                  { icon: '⚖️', title: '律師', desc: '法律諮詢服務' },
+                  { icon: '🔧', title: '水管工', desc: '家居維修服務' },
+                  { icon: '📊', title: '會計師', desc: '財務諮詢服務' },
+                  { icon: '📷', title: '攝影師', desc: '專業攝影服務' },
+                  { icon: '💪', title: '健身教練', desc: '健身指導服務' }
+                ].map((t, i) => (
+                  <div key={i} style={{ backgroundColor: '#1e293b', padding: '25px', borderRadius: '8px', border: '1px solid #334155', textAlign: 'center', cursor: 'pointer', transition: 'transform 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <p style={{ fontSize: '40px', margin: '0 0 10px 0' }}>{t.icon}</p>
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: 600 }}>{t.title}</h3>
+                    <p style={{ margin: 0, opacity: 0.75, fontSize: '14px' }}>{t.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Chat Tab */}
+          {activeTab === 'chat' && (
+            <div>
+              <h2 style={{ fontSize: '22px', fontWeight: 600, marginBottom: '20px' }}>WhatsApp 聯繫</h2>
+              <div style={{ backgroundColor: '#1e293b', padding: '25px', borderRadius: '8px', maxWidth: '450px', border: '1px solid #334155' }}>
+                <p style={{ margin: '0 0 20px 0', fontSize: '16px' }}>點擊下方按鈕直接發送 WhatsApp 消息到我們的支持團隊</p>
+                <a href="https://wa.me/852123456789" target="_blank" rel="noopener noreferrer" style={{ display: 'block', backgroundColor: '#25d366', color: 'white', padding: '12px 20px', borderRadius: '6px', textAlign: 'center', textDecoration: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '15px', border: 'none' }}>
+                  發送 WhatsApp 消息
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
-  )
+  );
 }
