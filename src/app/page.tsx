@@ -10,11 +10,13 @@ type Expert = {
   industry: string;
   email: string;
   phone: string;
+  address?: string;
+  rating?: number;
   status: string;
   inviteStatus: InviteStatus;
-  inviteDate: string;        // ISO date,例如 "2026-04-14"
-  lastInviteAt: string;      // ISO datetime,最近一次發送
-  inviteCount: number;       // 已發送次數
+  inviteDate: string;
+  lastInviteAt: string;
+  inviteCount: number;
 };
 
 type Template = {
@@ -31,6 +33,17 @@ type WhatsAppTemplate = {
   message: string;
 };
 
+type SearchResult = {
+  placeId: string;
+  name: string;
+  address: string;
+  phone: string;
+  rating: number;
+  userRatingsTotal: number;
+  website: string;
+  types: string[];
+};
+
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const nowISO = () => new Date().toISOString().slice(0, 16).replace('T', ' ');
 const fmtDate = (s: string) => (s ? s : '—');
@@ -39,7 +52,6 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>('dashboard');
 
-  // ===== Experts =====
   const [experts, setExperts] = useState<Expert[]>([
     { id: 1, name: '李明', industry: '導師', email: 'liming@example.com', phone: '85291111111', status: '已認證', inviteStatus: '已邀請', inviteDate: '2026-04-10', lastInviteAt: '2026-04-10 14:00', inviteCount: 1 },
     { id: 2, name: '王芳', industry: '律師', email: 'wangfang@example.com', phone: '85292222222', status: '未認證', inviteStatus: '未邀請', inviteDate: '', lastInviteAt: '', inviteCount: 0 }
@@ -47,11 +59,18 @@ export default function Home() {
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
   const [newExpert, setNewExpert] = useState<{ name: string; industry: string; email: string; phone: string }>({ name: '', industry: '', email: '', phone: '' });
 
-  // ===== Templates =====
+  // AI 搜索
+  const [showSearch, setShowSearch] = useState<boolean>(false);
+  const [searchIndustry, setSearchIndustry] = useState<string>('水電工');
+  const [searchLocation, setSearchLocation] = useState<string>('香港');
+  const [searchLoading, setSearchLoading] = useState<boolean>(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchError, setSearchError] = useState<string>('');
+
   const [templates, setTemplates] = useState<Template[]>([
     { id: 1, icon: '👨‍🏫', title: '導師', desc: '教育培訓專家' },
     { id: 2, icon: '⚖️', title: '律師', desc: '法律諮詢服務' },
-    { id: 3, icon: '🔧', title: '水管工', desc: '家居維修服務' },
+    { id: 3, icon: '🔧', title: '水電工', desc: '家居維修服務' },
     { id: 4, icon: '📊', title: '會計師', desc: '財務諮詢服務' },
     { id: 5, icon: '📷', title: '攝影師', desc: '專業攝影服務' },
     { id: 6, icon: '💪', title: '健身教練', desc: '健身指導服務' }
@@ -60,22 +79,20 @@ export default function Home() {
   const [editingTemplateId, setEditingTemplateId] = useState<number | null>(null);
   const [templateForm, setTemplateForm] = useState<{ icon: string; title: string; desc: string }>({ icon: '', title: '', desc: '' });
 
-  // ===== WhatsApp Templates =====
   const [waTemplates, setWaTemplates] = useState<WhatsAppTemplate[]>([
     { id: 1, title: '導師專用邀請', industry: '導師', message: '你好 {name} 老師!👨‍🏫\n\n我哋係 ConciergeAI,專注連接優秀導師同學員。睇到你嘅教學背景十分出色,誠邀你加入我哋嘅平台。\n\n✅ 自訂收費\n✅ 彈性時間\n✅ 穩定學員流量\n\n有興趣了解多啲?歡迎回覆我哋。' },
-    { id: 2, title: '律師專用邀請', industry: '律師', message: '{name} 律師你好,⚖️\n\n我係 ConciergeAI 嘅合作經理。我哋平台目前有大量法律諮詢需求(公司法、家庭法、合同審閱等),想邀請閣下加入我哋嘅認證律師網絡。\n\n📋 高素質客戶\n💼 透明收費機制\n🔒 嚴格保密\n\n方便嘅話希望進一步傾傾合作細節。' },
-    { id: 3, title: '水管工專用邀請', industry: '水管工', message: '你好 {name} 師傅!🔧\n\nConciergeAI 平台有大量住宅維修訂單,想邀請你加入我哋嘅信譽師傅網絡。\n\n💰 即時派單,當日收款\n📍 區內就近派工\n⭐ 客戶評分制度\n\n有興趣請回覆,我即刻幫你開戶。' },
+    { id: 2, title: '律師專用邀請', industry: '律師', message: '{name} 律師你好,⚖️\n\n我係 ConciergeAI 嘅合作經理。我哋平台目前有大量法律諮詢需求,想邀請閣下加入我哋嘅認證律師網絡。\n\n📋 高素質客戶\n💼 透明收費機制\n🔒 嚴格保密\n\n方便嘅話希望進一步傾傾合作細節。' },
+    { id: 3, title: '水電工專用邀請', industry: '水電工', message: '你好 {name} 師傅!🔧⚡\n\nConciergeAI 平台有大量住宅維修訂單(電路、水管、安裝),想邀請你加入我哋嘅信譽師傅網絡。\n\n💰 即時派單,當日收款\n📍 區內就近派工\n⭐ 客戶評分制度\n🛠️ 水電全包工種\n\n有興趣請回覆,我即刻幫你開戶。' },
     { id: 4, title: '會計師專用邀請', industry: '會計師', message: '{name} 會計師你好,📊\n\n我哋 ConciergeAI 為中小企客戶提供一站式會計服務配對,目前急需專業會計師加入。\n\n✅ 固定客戶來源\n✅ 月度結算\n✅ 自選工作量\n\n想了解詳細條款請即覆。' },
     { id: 5, title: '攝影師專用邀請', industry: '攝影師', message: 'Hi {name}!📷\n\n見到你嘅作品好有風格,想邀請你加入 ConciergeAI 攝影師網絡。\n\n📸 婚禮、活動、商業攝影訂單\n💵 高於市場價\n🎨 自由創作風格\n\n有興趣即覆我傾合作!' },
     { id: 6, title: '健身教練專用邀請', industry: '健身教練', message: '{name} 教練你好!💪\n\nConciergeAI 健康平台正招募認證教練,提供:\n\n🏋️ 一對一/小組訓練客戶\n💰 自訂時薪 (HK$300+)\n📅 完全彈性時間\n\n想加入我哋嘅教練團隊?即覆我傾傾!' },
-    { id: 7, title: '通用邀請', industry: '通用', message: '你好 {name},\n\n我哋係 ConciergeAI,睇到你係專業嘅{industry},想誠邀你加入我哋嘅專家平台。我哋會為你帶來穩定客戶,你只需專注做好專業服務。\n\n有興趣請回覆我哋了解詳情。' },
+    { id: 7, title: '通用邀請', industry: '通用', message: '你好 {name},\n\n我哋係 ConciergeAI,睇到你係專業嘅{industry},想誠邀你加入我哋嘅專家平台。我哋會為你帶來穩定客戶。\n\n有興趣請回覆我哋了解詳情。' },
     { id: 8, title: '跟進(未回覆)', industry: '跟進', message: '你好 {name},想跟進一下之前嘅邀請,你對加入 ConciergeAI {industry}網絡有冇興趣?如有任何疑問歡迎隨時提出 🙏' }
   ]);
   const [showWaForm, setShowWaForm] = useState<boolean>(false);
   const [editingWaId, setEditingWaId] = useState<number | null>(null);
   const [waForm, setWaForm] = useState<{ title: string; industry: string; message: string }>({ title: '', industry: '通用', message: '' });
 
-  // ===== Expert Handlers =====
   const handleAddExpert = () => {
     if (newExpert.name && newExpert.industry && newExpert.email) {
       setExperts([...experts, { id: Date.now(), ...newExpert, status: '待認證', inviteStatus: '未邀請', inviteDate: '', lastInviteAt: '', inviteCount: 0 }]);
@@ -87,7 +104,74 @@ export default function Home() {
     setExperts(experts.filter((e) => e.id !== id));
   };
 
-  // ===== AI 模板配對 =====
+  // ===== AI 搜索 =====
+  const runSearch = async () => {
+    if (!searchIndustry.trim()) return;
+    setSearchLoading(true);
+    setSearchError('');
+    setSearchResults([]);
+    try {
+      const url = `/api/search-experts?q=${encodeURIComponent(searchIndustry)}&location=${encodeURIComponent(searchLocation)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!res.ok) {
+        setSearchError(data.error || `搜索失敗 (HTTP ${res.status})`);
+      } else {
+        setSearchResults(data.results || []);
+        if ((data.results || []).length === 0) setSearchError('搵唔到結果,試下改關鍵字或地區。');
+      }
+    } catch (err: any) {
+      setSearchError(err.message || '網絡錯誤');
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const addFromSearch = (r: SearchResult) => {
+    const phoneClean = r.phone.replace(/\D/g, '');
+    if (phoneClean && experts.find((e) => e.phone === phoneClean)) {
+      alert(`${r.name} 已經喺名單內`);
+      return;
+    }
+    setExperts((prev) => [...prev, {
+      id: Date.now() + Math.random(),
+      name: r.name,
+      industry: searchIndustry,
+      email: '',
+      phone: phoneClean,
+      address: r.address,
+      rating: r.rating,
+      status: '待認證',
+      inviteStatus: '未邀請',
+      inviteDate: '',
+      lastInviteAt: '',
+      inviteCount: 0
+    }]);
+  };
+
+  const addAllFromSearch = () => {
+    const withPhone = searchResults.filter((r) => r.phone);
+    const newItems: Expert[] = withPhone
+      .filter((r) => !experts.find((e) => e.phone === r.phone.replace(/\D/g, '')))
+      .map((r, i) => ({
+        id: Date.now() + i,
+        name: r.name,
+        industry: searchIndustry,
+        email: '',
+        phone: r.phone.replace(/\D/g, ''),
+        address: r.address,
+        rating: r.rating,
+        status: '待認證',
+        inviteStatus: '未邀請' as InviteStatus,
+        inviteDate: '',
+        lastInviteAt: '',
+        inviteCount: 0
+      }));
+    if (newItems.length === 0) { alert('冇新師傅可加入'); return; }
+    setExperts((prev) => [...prev, ...newItems]);
+    alert(`✅ 已加入 ${newItems.length} 位 ${searchIndustry}`);
+  };
+
   const findTemplateForIndustry = (industry: string, mode: 'invite' | 'followup' = 'invite'): WhatsAppTemplate | null => {
     if (mode === 'followup') {
       const f = waTemplates.find((t) => t.industry === '跟進');
@@ -100,62 +184,39 @@ export default function Home() {
     return waTemplates.find((t) => t.industry === '通用') || null;
   };
 
-  // ===== 邀請 / 重發 =====
   const sendInvite = (expert: Expert, isFollowUp = false) => {
     const tpl = findTemplateForIndustry(expert.industry, isFollowUp ? 'followup' : 'invite');
-    if (!tpl) { alert('未搵到合適模板,請去 WhatsApp tab 新增。'); return; }
-    if (!expert.phone) { alert(`${expert.name} 未設定電話號碼,請先編輯加入。`); return; }
+    if (!tpl) { alert('未搵到合適模板'); return; }
+    if (!expert.phone) { alert(`${expert.name} 未設定電話`); return; }
     const msg = tpl.message.replace(/\{name\}/g, expert.name).replace(/\{industry\}/g, expert.industry);
     const phone = expert.phone.replace(/\D/g, '');
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-    // 更新狀態
-    setExperts(experts.map((e) => e.id === expert.id ? {
-      ...e,
-      inviteStatus: '已邀請',
-      inviteDate: e.inviteDate || todayISO(),
-      lastInviteAt: nowISO(),
-      inviteCount: e.inviteCount + 1
-    } : e));
+    setExperts(experts.map((e) => e.id === expert.id ? { ...e, inviteStatus: '已邀請', inviteDate: e.inviteDate || todayISO(), lastInviteAt: nowISO(), inviteCount: e.inviteCount + 1 } : e));
   };
 
-  // 更新邀請狀態
-  const updateInviteStatus = (id: number, status: InviteStatus) => {
-    setExperts(experts.map((e) => e.id === id ? { ...e, inviteStatus: status } : e));
-  };
+  const updateInviteStatus = (id: number, status: InviteStatus) => setExperts(experts.map((e) => e.id === id ? { ...e, inviteStatus: status } : e));
+  const updateInviteDate = (id: number, date: string) => setExperts(experts.map((e) => e.id === id ? { ...e, inviteDate: date } : e));
 
-  // 改邀請日期
-  const updateInviteDate = (id: number, date: string) => {
-    setExperts(experts.map((e) => e.id === id ? { ...e, inviteDate: date } : e));
-  };
-
-  // ===== Template CRUD =====
   const openNewTemplate = () => { setEditingTemplateId(null); setTemplateForm({ icon: '', title: '', desc: '' }); setShowTemplateForm(true); };
   const openEditTemplate = (t: Template) => { setEditingTemplateId(t.id); setTemplateForm({ icon: t.icon, title: t.title, desc: t.desc }); setShowTemplateForm(true); };
   const saveTemplate = () => {
     if (!templateForm.title || !templateForm.icon) return;
-    if (editingTemplateId !== null) {
-      setTemplates(templates.map((t) => (t.id === editingTemplateId ? { ...t, ...templateForm } : t)));
-    } else {
-      setTemplates([...templates, { id: Date.now(), ...templateForm }]);
-    }
+    if (editingTemplateId !== null) setTemplates(templates.map((t) => (t.id === editingTemplateId ? { ...t, ...templateForm } : t)));
+    else setTemplates([...templates, { id: Date.now(), ...templateForm }]);
     setShowTemplateForm(false); setEditingTemplateId(null); setTemplateForm({ icon: '', title: '', desc: '' });
   };
   const deleteTemplate = (id: number) => setTemplates(templates.filter((t) => t.id !== id));
 
-  // ===== WA Template CRUD =====
   const openNewWa = () => { setEditingWaId(null); setWaForm({ title: '', industry: '通用', message: '' }); setShowWaForm(true); };
   const openEditWa = (w: WhatsAppTemplate) => { setEditingWaId(w.id); setWaForm({ title: w.title, industry: w.industry, message: w.message }); setShowWaForm(true); };
   const saveWa = () => {
     if (!waForm.title || !waForm.message) return;
-    if (editingWaId !== null) {
-      setWaTemplates(waTemplates.map((w) => (w.id === editingWaId ? { ...w, ...waForm } : w)));
-    } else {
-      setWaTemplates([...waTemplates, { id: Date.now(), ...waForm }]);
-    }
+    if (editingWaId !== null) setWaTemplates(waTemplates.map((w) => (w.id === editingWaId ? { ...w, ...waForm } : w)));
+    else setWaTemplates([...waTemplates, { id: Date.now(), ...waForm }]);
     setShowWaForm(false); setEditingWaId(null); setWaForm({ title: '', industry: '通用', message: '' });
   };
   const deleteWa = (id: number) => setWaTemplates(waTemplates.filter((w) => w.id !== id));
-  const copyWa = (msg: string) => { navigator.clipboard.writeText(msg); alert('已複製到剪貼板'); };
+  const copyWa = (msg: string) => { navigator.clipboard.writeText(msg); alert('已複製'); };
 
   const tabs = [
     { id: 'dashboard', label: '儀表板', icon: '📊' },
@@ -164,20 +225,8 @@ export default function Home() {
     { id: 'chat', label: 'WhatsApp', icon: '💬' }
   ];
 
-  const inputStyle = {
-    width: '100%', padding: '10px', marginBottom: '10px',
-    backgroundColor: '#334155', border: '1px solid #475569', color: 'white',
-    borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box' as const
-  };
-
-  // 邀請狀態顏色
-  const statusColor: Record<InviteStatus, string> = {
-    '未邀請': '#64748b',
-    '已邀請': '#0ea5e9',
-    '未回覆': '#f59e0b',
-    '已加入': '#10b981',
-    '已拒絕': '#dc2626'
-  };
+  const inputStyle = { width: '100%', padding: '10px', marginBottom: '10px', backgroundColor: '#334155', border: '1px solid #475569', color: 'white', borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box' as const };
+  const statusColor: Record<InviteStatus, string> = { '未邀請': '#64748b', '已邀請': '#0ea5e9', '未回覆': '#f59e0b', '已加入': '#10b981', '已拒絕': '#dc2626' };
 
   return (
     <div style={{ display: 'flex', height: '100vh', backgroundColor: '#0f172a', color: '#e2e8f0', fontFamily: 'system-ui, sans-serif' }}>
@@ -205,27 +254,19 @@ export default function Home() {
           {activeTab === 'dashboard' && (
             <div>
               <h2 style={{ fontSize: '22px', fontWeight: 600, marginBottom: '20px' }}>儀表板概覽</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-                <div style={{ backgroundColor: '#334155', padding: '20px', borderRadius: '8px', border: '1px solid #475569' }}>
-                  <p style={{ margin: '0 0 10px 0', opacity: 0.8, fontSize: '14px' }}>專家總數</p>
-                  <p style={{ margin: 0, fontSize: '32px', fontWeight: 700, color: '#0ea5e9' }}>{experts.length}</p>
-                </div>
-                <div style={{ backgroundColor: '#334155', padding: '20px', borderRadius: '8px', border: '1px solid #475569' }}>
-                  <p style={{ margin: '0 0 10px 0', opacity: 0.8, fontSize: '14px' }}>已加入</p>
-                  <p style={{ margin: 0, fontSize: '32px', fontWeight: 700, color: '#10b981' }}>{experts.filter((e) => e.inviteStatus === '已加入').length}</p>
-                </div>
-                <div style={{ backgroundColor: '#334155', padding: '20px', borderRadius: '8px', border: '1px solid #475569' }}>
-                  <p style={{ margin: '0 0 10px 0', opacity: 0.8, fontSize: '14px' }}>已邀請</p>
-                  <p style={{ margin: 0, fontSize: '32px', fontWeight: 700, color: '#0ea5e9' }}>{experts.filter((e) => e.inviteStatus === '已邀請').length}</p>
-                </div>
-                <div style={{ backgroundColor: '#334155', padding: '20px', borderRadius: '8px', border: '1px solid #475569' }}>
-                  <p style={{ margin: '0 0 10px 0', opacity: 0.8, fontSize: '14px' }}>未回覆</p>
-                  <p style={{ margin: 0, fontSize: '32px', fontWeight: 700, color: '#f59e0b' }}>{experts.filter((e) => e.inviteStatus === '未回覆').length}</p>
-                </div>
-                <div style={{ backgroundColor: '#334155', padding: '20px', borderRadius: '8px', border: '1px solid #475569' }}>
-                  <p style={{ margin: '0 0 10px 0', opacity: 0.8, fontSize: '14px' }}>未邀請</p>
-                  <p style={{ margin: 0, fontSize: '32px', fontWeight: 700, color: '#64748b' }}>{experts.filter((e) => e.inviteStatus === '未邀請').length}</p>
-                </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '15px', marginBottom: '30px' }}>
+                {[
+                  { label: '專家總數', val: experts.length, color: '#0ea5e9' },
+                  { label: '已加入', val: experts.filter((e) => e.inviteStatus === '已加入').length, color: '#10b981' },
+                  { label: '已邀請', val: experts.filter((e) => e.inviteStatus === '已邀請').length, color: '#0ea5e9' },
+                  { label: '未回覆', val: experts.filter((e) => e.inviteStatus === '未回覆').length, color: '#f59e0b' },
+                  { label: '未邀請', val: experts.filter((e) => e.inviteStatus === '未邀請').length, color: '#64748b' }
+                ].map((s, i) => (
+                  <div key={i} style={{ backgroundColor: '#334155', padding: '18px', borderRadius: '8px', border: '1px solid #475569' }}>
+                    <p style={{ margin: '0 0 8px 0', opacity: 0.8, fontSize: '13px' }}>{s.label}</p>
+                    <p style={{ margin: 0, fontSize: '28px', fontWeight: 700, color: s.color }}>{s.val}</p>
+                  </div>
+                ))}
               </div>
               <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '15px' }}>專家邀請狀態</h3>
               <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid #334155' }}>
@@ -235,8 +276,8 @@ export default function Home() {
                       <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>名字</th>
                       <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>行業</th>
                       <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>邀請日期</th>
-                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>已發次數</th>
-                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>邀請狀態</th>
+                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>次數</th>
+                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>狀態</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -246,9 +287,7 @@ export default function Home() {
                         <td style={{ padding: '12px' }}>{expert.industry}</td>
                         <td style={{ padding: '12px' }}>{fmtDate(expert.inviteDate)}</td>
                         <td style={{ padding: '12px', textAlign: 'center' }}>{expert.inviteCount}</td>
-                        <td style={{ padding: '12px' }}>
-                          <span style={{ backgroundColor: statusColor[expert.inviteStatus], color: 'white', padding: '3px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 500 }}>{expert.inviteStatus}</span>
-                        </td>
+                        <td style={{ padding: '12px' }}><span style={{ backgroundColor: statusColor[expert.inviteStatus], color: 'white', padding: '3px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 500 }}>{expert.inviteStatus}</span></td>
                       </tr>
                     ))}
                   </tbody>
@@ -259,24 +298,74 @@ export default function Home() {
 
           {activeTab === 'experts' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
                 <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 600 }}>專家管理</h2>
-                <button onClick={() => setShowAddForm(!showAddForm)} style={{ backgroundColor: '#0ea5e9', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}>+ 添加專家</button>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <button onClick={() => setShowSearch(!showSearch)} style={{ backgroundColor: '#8b5cf6', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}>🔍 AI 搜索專家</button>
+                  <button onClick={() => setShowAddForm(!showAddForm)} style={{ backgroundColor: '#0ea5e9', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}>+ 手動添加</button>
+                </div>
               </div>
 
+              {showSearch && (
+                <div style={{ backgroundColor: '#1e1b4b', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #8b5cf6' }}>
+                  <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: 600, color: '#c4b5fd' }}>🤖 AI 智能搜索(Google Places)</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '10px', marginBottom: '15px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', opacity: 0.8, marginBottom: '5px' }}>行業 / 關鍵字</label>
+                      <input type="text" placeholder="例如: 水電工" value={searchIndustry} onChange={(e) => setSearchIndustry(e.target.value)} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', opacity: 0.8, marginBottom: '5px' }}>地區</label>
+                      <input type="text" placeholder="例如: 中環、尖沙咀" value={searchLocation} onChange={(e) => setSearchLocation(e.target.value)} style={inputStyle} />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                      <button onClick={runSearch} disabled={searchLoading} style={{ backgroundColor: searchLoading ? '#475569' : '#8b5cf6', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: searchLoading ? 'wait' : 'pointer', fontWeight: 600, fontSize: '14px', marginBottom: '10px', whiteSpace: 'nowrap' }}>
+                        {searchLoading ? '🔄 搜索中...' : '🔍 搜索'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {searchError && (
+                    <div style={{ backgroundColor: '#450a0a', border: '1px solid #dc2626', padding: '10px 15px', borderRadius: '6px', marginBottom: '15px', fontSize: '13px', color: '#fca5a5' }}>
+                      ⚠️ {searchError}
+                      {searchError.includes('環境變數') && <div style={{ marginTop: '8px', fontSize: '12px' }}>請去 Vercel 設定 <code>GOOGLE_PLACES_API_KEY</code> — 睇 SETUP_GOOGLE_API.md</div>}
+                    </div>
+                  )}
+
+                  {searchResults.length > 0 && (
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <span style={{ fontSize: '14px', opacity: 0.9 }}>找到 <strong style={{ color: '#c4b5fd' }}>{searchResults.length}</strong> 個結果</span>
+                        <button onClick={addAllFromSearch} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '13px' }}>⚡ 一鍵全部加入</button>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '10px', maxHeight: '500px', overflowY: 'auto' }}>
+                        {searchResults.map((r) => (
+                          <div key={r.placeId} style={{ backgroundColor: '#0f172a', padding: '12px', borderRadius: '6px', border: '1px solid #334155' }}>
+                            <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: 600 }}>{r.name}</h4>
+                            <p style={{ margin: '3px 0', fontSize: '12px', opacity: 0.8 }}>📍 {r.address || '(冇地址)'}</p>
+                            <p style={{ margin: '3px 0', fontSize: '12px', opacity: 0.8 }}>📱 {r.phone || '(冇電話)'}</p>
+                            {r.rating > 0 && <p style={{ margin: '3px 0', fontSize: '12px', color: '#fbbf24' }}>⭐ {r.rating} ({r.userRatingsTotal} 評價)</p>}
+                            <button onClick={() => addFromSearch(r)} disabled={!r.phone} style={{ marginTop: '8px', width: '100%', padding: '7px', backgroundColor: r.phone ? '#0ea5e9' : '#475569', border: 'none', color: 'white', cursor: r.phone ? 'pointer' : 'not-allowed', borderRadius: '4px', fontSize: '12px', fontWeight: 500 }}>
+                              {r.phone ? '➕ 加入專家' : '❌ 無電話'}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div style={{ backgroundColor: '#0c2d1f', border: '1px solid #10b981', padding: '12px 16px', borderRadius: '6px', marginBottom: '20px', fontSize: '13px', color: '#a7f3d0' }}>
-                💡 <strong>智能邀請流程:</strong>
-                <br />1️⃣ 撳「📱 發送邀請」→ AI 自動配對行業模板,開 WhatsApp,記錄日期同次數
-                <br />2️⃣ 對方回覆後,撳狀態掣標記「✅ 已加入」/「⏳ 未回覆」/「❌ 已拒絕」
-                <br />3️⃣ 對「未回覆」嘅專家,撳「🔁 重發跟進」會用「跟進」模板再 send
+                💡 <strong>流程:</strong> 🔍 AI 搜索 → ➕ 加入專家 → 📱 智能邀請 → 追蹤狀態 → 🔁 重發跟進
               </div>
 
               {showAddForm && (
                 <div style={{ backgroundColor: '#1e293b', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #334155' }}>
                   <input type="text" placeholder="名字" value={newExpert.name} onChange={(e) => setNewExpert({ ...newExpert, name: e.target.value })} style={inputStyle} />
-                  <input type="text" placeholder="行業 (例如: 律師、導師、攝影師)" value={newExpert.industry} onChange={(e) => setNewExpert({ ...newExpert, industry: e.target.value })} style={inputStyle} />
+                  <input type="text" placeholder="行業" value={newExpert.industry} onChange={(e) => setNewExpert({ ...newExpert, industry: e.target.value })} style={inputStyle} />
                   <input type="email" placeholder="郵箱" value={newExpert.email} onChange={(e) => setNewExpert({ ...newExpert, email: e.target.value })} style={inputStyle} />
-                  <input type="text" placeholder="WhatsApp 電話 (含區號,例如 85291234567)" value={newExpert.phone} onChange={(e) => setNewExpert({ ...newExpert, phone: e.target.value })} style={{ ...inputStyle, marginBottom: '15px' }} />
+                  <input type="text" placeholder="WhatsApp 電話" value={newExpert.phone} onChange={(e) => setNewExpert({ ...newExpert, phone: e.target.value })} style={{ ...inputStyle, marginBottom: '15px' }} />
                   <button onClick={handleAddExpert} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}>保存</button>
                 </div>
               )}
@@ -292,8 +381,10 @@ export default function Home() {
                         <span style={{ backgroundColor: statusColor[expert.inviteStatus], color: 'white', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>{expert.inviteStatus}</span>
                       </div>
                       <p style={{ margin: '4px 0', opacity: 0.8, fontSize: '13px' }}>🏢 {expert.industry}</p>
-                      <p style={{ margin: '4px 0', opacity: 0.8, fontSize: '13px' }}>✉️ {expert.email}</p>
+                      {expert.address && <p style={{ margin: '4px 0', opacity: 0.7, fontSize: '12px' }}>📍 {expert.address}</p>}
+                      {expert.email && <p style={{ margin: '4px 0', opacity: 0.8, fontSize: '13px' }}>✉️ {expert.email}</p>}
                       <p style={{ margin: '4px 0', opacity: 0.8, fontSize: '13px' }}>📱 {expert.phone || '(未設定)'}</p>
+                      {expert.rating && expert.rating > 0 && <p style={{ margin: '4px 0', fontSize: '12px', color: '#fbbf24' }}>⭐ {expert.rating}</p>}
 
                       <div style={{ backgroundColor: '#0f172a', padding: '10px', borderRadius: '6px', marginTop: '10px', fontSize: '12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
@@ -314,7 +405,6 @@ export default function Home() {
                         🤖 AI 模板: {matchedTpl ? `${matchedTpl.title}${isMatched ? ' ✓' : ' (通用)'}` : '⚠️ 無'}
                       </p>
 
-                      {/* 主邀請掣 */}
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
                         {expert.inviteCount === 0 ? (
                           <button onClick={() => sendInvite(expert, false)} style={{ flex: '1 1 100%', padding: '10px', backgroundColor: '#25d366', border: 'none', color: 'white', cursor: 'pointer', borderRadius: '4px', fontSize: '14px', fontWeight: 600 }}>📱 發送邀請</button>
@@ -326,7 +416,6 @@ export default function Home() {
                         )}
                       </div>
 
-                      {/* 狀態快選掣 */}
                       <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '8px' }}>
                         <button onClick={() => updateInviteStatus(expert.id, '已加入')} style={{ flex: 1, padding: '6px', backgroundColor: expert.inviteStatus === '已加入' ? '#10b981' : '#1e293b', border: '1px solid #10b981', color: 'white', cursor: 'pointer', borderRadius: '4px', fontSize: '12px', fontWeight: 500 }}>✅ 已加入</button>
                         <button onClick={() => updateInviteStatus(expert.id, '未回覆')} style={{ flex: 1, padding: '6px', backgroundColor: expert.inviteStatus === '未回覆' ? '#f59e0b' : '#1e293b', border: '1px solid #f59e0b', color: 'white', cursor: 'pointer', borderRadius: '4px', fontSize: '12px', fontWeight: 500 }}>⏳ 未回覆</button>
@@ -352,9 +441,9 @@ export default function Home() {
               </div>
               {showTemplateForm && (
                 <div style={{ backgroundColor: '#1e293b', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #334155' }}>
-                  <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: 600 }}>{editingTemplateId !== null ? '編輯模板' : '新增模板'}</h3>
-                  <input type="text" placeholder="圖示 emoji" value={templateForm.icon} onChange={(e) => setTemplateForm({ ...templateForm, icon: e.target.value })} style={inputStyle} />
-                  <input type="text" placeholder="職業名稱" value={templateForm.title} onChange={(e) => setTemplateForm({ ...templateForm, title: e.target.value })} style={inputStyle} />
+                  <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: 600 }}>{editingTemplateId !== null ? '編輯' : '新增'}</h3>
+                  <input type="text" placeholder="圖示" value={templateForm.icon} onChange={(e) => setTemplateForm({ ...templateForm, icon: e.target.value })} style={inputStyle} />
+                  <input type="text" placeholder="職業" value={templateForm.title} onChange={(e) => setTemplateForm({ ...templateForm, title: e.target.value })} style={inputStyle} />
                   <input type="text" placeholder="描述" value={templateForm.desc} onChange={(e) => setTemplateForm({ ...templateForm, desc: e.target.value })} style={{ ...inputStyle, marginBottom: '15px' }} />
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <button onClick={saveTemplate} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}>保存</button>
@@ -382,18 +471,17 @@ export default function Home() {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 600 }}>WhatsApp 邀請模板</h2>
-                <button onClick={openNewWa} style={{ backgroundColor: '#0ea5e9', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}>+ 新增模板</button>
+                <button onClick={openNewWa} style={{ backgroundColor: '#0ea5e9', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}>+ 新增</button>
               </div>
               <div style={{ backgroundColor: '#0c2d1f', border: '1px solid #10b981', padding: '12px 16px', borderRadius: '6px', marginBottom: '20px', fontSize: '13px', color: '#a7f3d0' }}>
-                💡 <strong>變數:</strong> <code style={{ backgroundColor: '#1e293b', padding: '2px 6px', borderRadius: '3px' }}>{'{name}'}</code> = 專家姓名,<code style={{ backgroundColor: '#1e293b', padding: '2px 6px', borderRadius: '3px' }}>{'{industry}'}</code> = 行業,自動代入<br />
-                🤖 <strong>行業欄填法:</strong> 律師/導師等 = 該行業專用 | <code style={{ backgroundColor: '#1e293b', padding: '2px 6px', borderRadius: '3px' }}>通用</code> = fallback | <code style={{ backgroundColor: '#1e293b', padding: '2px 6px', borderRadius: '3px' }}>跟進</code> = 重發未回覆專用
+                💡 變數: <code style={{ backgroundColor: '#1e293b', padding: '2px 6px', borderRadius: '3px' }}>{'{name}'}</code> <code style={{ backgroundColor: '#1e293b', padding: '2px 6px', borderRadius: '3px' }}>{'{industry}'}</code> | 🤖 行業欄: 律師/導師 = 專用 | <code style={{ backgroundColor: '#1e293b', padding: '2px 6px', borderRadius: '3px' }}>通用</code> fallback | <code style={{ backgroundColor: '#1e293b', padding: '2px 6px', borderRadius: '3px' }}>跟進</code> = 重發
               </div>
               {showWaForm && (
                 <div style={{ backgroundColor: '#1e293b', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #334155' }}>
-                  <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: 600 }}>{editingWaId !== null ? '編輯模板' : '新增模板'}</h3>
-                  <input type="text" placeholder="模板標題" value={waForm.title} onChange={(e) => setWaForm({ ...waForm, title: e.target.value })} style={inputStyle} />
-                  <input type="text" placeholder="對應行業 (律師/導師/通用/跟進...)" value={waForm.industry} onChange={(e) => setWaForm({ ...waForm, industry: e.target.value })} style={inputStyle} />
-                  <textarea placeholder="訊息內容,可用 {name} {industry}" value={waForm.message} onChange={(e) => setWaForm({ ...waForm, message: e.target.value })} rows={8} style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', marginBottom: '15px' }} />
+                  <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: 600 }}>{editingWaId !== null ? '編輯' : '新增'}</h3>
+                  <input type="text" placeholder="標題" value={waForm.title} onChange={(e) => setWaForm({ ...waForm, title: e.target.value })} style={inputStyle} />
+                  <input type="text" placeholder="行業" value={waForm.industry} onChange={(e) => setWaForm({ ...waForm, industry: e.target.value })} style={inputStyle} />
+                  <textarea placeholder="訊息" value={waForm.message} onChange={(e) => setWaForm({ ...waForm, message: e.target.value })} rows={8} style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', marginBottom: '15px' }} />
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <button onClick={saveWa} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}>保存</button>
                     <button onClick={() => { setShowWaForm(false); setEditingWaId(null); }} style={{ backgroundColor: '#475569', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}>取消</button>
