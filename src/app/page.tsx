@@ -17,23 +17,25 @@ type Template = {
   desc: string;
 };
 
+type WhatsAppTemplate = {
+  id: number;
+  title: string;
+  message: string;
+};
+
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>('dashboard');
 
-  // Experts state
+  // Experts
   const [experts, setExperts] = useState<Expert[]>([
     { id: 1, name: '李明', industry: '導師', email: 'liming@example.com', status: '已認證' },
     { id: 2, name: '王芳', industry: '律師', email: 'wangfang@example.com', status: '未認證' }
   ]);
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
-  const [newExpert, setNewExpert] = useState<{ name: string; industry: string; email: string }>({
-    name: '',
-    industry: '',
-    email: ''
-  });
+  const [newExpert, setNewExpert] = useState<{ name: string; industry: string; email: string }>({ name: '', industry: '', email: '' });
 
-  // Templates state (CRUD)
+  // Templates (CRUD)
   const [templates, setTemplates] = useState<Template[]>([
     { id: 1, icon: '👨‍🏫', title: '導師', desc: '教育培訓專家' },
     { id: 2, icon: '⚖️', title: '律師', desc: '法律諮詢服務' },
@@ -44,11 +46,30 @@ export default function Home() {
   ]);
   const [showTemplateForm, setShowTemplateForm] = useState<boolean>(false);
   const [editingTemplateId, setEditingTemplateId] = useState<number | null>(null);
-  const [templateForm, setTemplateForm] = useState<{ icon: string; title: string; desc: string }>({
-    icon: '',
-    title: '',
-    desc: ''
-  });
+  const [templateForm, setTemplateForm] = useState<{ icon: string; title: string; desc: string }>({ icon: '', title: '', desc: '' });
+
+  // WhatsApp Invite Templates (CRUD)
+  const [waTemplates, setWaTemplates] = useState<WhatsAppTemplate[]>([
+    {
+      id: 1,
+      title: '邀請新專家加入',
+      message: '你好!我哋係 ConciergeAI,睇到你嘅專業背景非常出色。誠邀你加入我哋嘅專家平台,接觸更多優質客戶。請問你有冇興趣了解多啲?'
+    },
+    {
+      id: 2,
+      title: '認證提醒',
+      message: '你好,你嘅專家檔案已經建立,但仲未完成認證。請喺 24 小時內提交以下文件:身份證明、專業資格證書。完成後你就可以開始接單。'
+    },
+    {
+      id: 3,
+      title: '新訂單通知',
+      message: '🔔 有新客戶想預約你嘅服務!詳情:[請填寫]。請喺 30 分鐘內回覆係咪接呢張單。'
+    }
+  ]);
+  const [showWaForm, setShowWaForm] = useState<boolean>(false);
+  const [editingWaId, setEditingWaId] = useState<number | null>(null);
+  const [waForm, setWaForm] = useState<{ title: string; message: string }>({ title: '', message: '' });
+  const [waPhone, setWaPhone] = useState<string>('852');
 
   const handleAddExpert = () => {
     if (newExpert.name && newExpert.industry && newExpert.email) {
@@ -68,13 +89,11 @@ export default function Home() {
     setTemplateForm({ icon: '', title: '', desc: '' });
     setShowTemplateForm(true);
   };
-
   const openEditTemplate = (t: Template) => {
     setEditingTemplateId(t.id);
     setTemplateForm({ icon: t.icon, title: t.title, desc: t.desc });
     setShowTemplateForm(true);
   };
-
   const saveTemplate = () => {
     if (!templateForm.title || !templateForm.icon) return;
     if (editingTemplateId !== null) {
@@ -86,9 +105,43 @@ export default function Home() {
     setEditingTemplateId(null);
     setTemplateForm({ icon: '', title: '', desc: '' });
   };
-
   const deleteTemplate = (id: number) => {
     setTemplates(templates.filter((t) => t.id !== id));
+  };
+
+  // WhatsApp Template CRUD
+  const openNewWa = () => {
+    setEditingWaId(null);
+    setWaForm({ title: '', message: '' });
+    setShowWaForm(true);
+  };
+  const openEditWa = (w: WhatsAppTemplate) => {
+    setEditingWaId(w.id);
+    setWaForm({ title: w.title, message: w.message });
+    setShowWaForm(true);
+  };
+  const saveWa = () => {
+    if (!waForm.title || !waForm.message) return;
+    if (editingWaId !== null) {
+      setWaTemplates(waTemplates.map((w) => (w.id === editingWaId ? { ...w, ...waForm } : w)));
+    } else {
+      setWaTemplates([...waTemplates, { id: Date.now(), ...waForm }]);
+    }
+    setShowWaForm(false);
+    setEditingWaId(null);
+    setWaForm({ title: '', message: '' });
+  };
+  const deleteWa = (id: number) => {
+    setWaTemplates(waTemplates.filter((w) => w.id !== id));
+  };
+  const sendWa = (msg: string) => {
+    const phone = waPhone.replace(/\D/g, '');
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+  };
+  const copyWa = (msg: string) => {
+    navigator.clipboard.writeText(msg);
+    alert('已複製到剪貼板');
   };
 
   const tabs = [
@@ -217,7 +270,7 @@ export default function Home() {
               {showTemplateForm && (
                 <div style={{ backgroundColor: '#1e293b', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #334155' }}>
                   <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: 600 }}>{editingTemplateId !== null ? '編輯模板' : '新增模板'}</h3>
-                  <input type="text" placeholder="圖示 (例如: 👨‍🏫 或 emoji)" value={templateForm.icon} onChange={(e) => setTemplateForm({ ...templateForm, icon: e.target.value })} style={inputStyle} />
+                  <input type="text" placeholder="圖示 (例如: 👨‍🏫 emoji)" value={templateForm.icon} onChange={(e) => setTemplateForm({ ...templateForm, icon: e.target.value })} style={inputStyle} />
                   <input type="text" placeholder="職業名稱 (例如: 設計師)" value={templateForm.title} onChange={(e) => setTemplateForm({ ...templateForm, title: e.target.value })} style={inputStyle} />
                   <input type="text" placeholder="描述 (例如: 平面設計服務)" value={templateForm.desc} onChange={(e) => setTemplateForm({ ...templateForm, desc: e.target.value })} style={{ ...inputStyle, marginBottom: '15px' }} />
                   <div style={{ display: 'flex', gap: '10px' }}>
@@ -245,10 +298,41 @@ export default function Home() {
 
           {activeTab === 'chat' && (
             <div>
-              <h2 style={{ fontSize: '22px', fontWeight: 600, marginBottom: '20px' }}>WhatsApp 聯繫</h2>
-              <div style={{ backgroundColor: '#1e293b', padding: '25px', borderRadius: '8px', maxWidth: '450px', border: '1px solid #334155' }}>
-                <p style={{ margin: '0 0 20px 0', fontSize: '16px' }}>點擊下方按鈕直接發送 WhatsApp 消息到我們的支持團隊</p>
-                <a href="https://wa.me/852123456789" target="_blank" rel="noopener noreferrer" style={{ display: 'block', backgroundColor: '#25d366', color: 'white', padding: '12px 20px', borderRadius: '6px', textAlign: 'center', textDecoration: 'none', fontWeight: 500, fontSize: '15px' }}>發送 WhatsApp 消息</a>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 600 }}>WhatsApp 邀請專家模板</h2>
+                <button onClick={openNewWa} style={{ backgroundColor: '#0ea5e9', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}>+ 新增模板</button>
+              </div>
+
+              <div style={{ backgroundColor: '#1e293b', padding: '15px 20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #334155', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ fontSize: '14px', opacity: 0.8, whiteSpace: 'nowrap' }}>📱 接收電話 (含區號):</label>
+                <input type="text" placeholder="例如: 85291234567" value={waPhone} onChange={(e) => setWaPhone(e.target.value)} style={{ flex: 1, padding: '8px 10px', backgroundColor: '#334155', border: '1px solid #475569', color: 'white', borderRadius: '4px', fontSize: '14px' }} />
+              </div>
+
+              {showWaForm && (
+                <div style={{ backgroundColor: '#1e293b', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #334155' }}>
+                  <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: 600 }}>{editingWaId !== null ? '編輯模板' : '新增 WhatsApp 邀請模板'}</h3>
+                  <input type="text" placeholder="模板標題 (例如: 邀請新專家)" value={waForm.title} onChange={(e) => setWaForm({ ...waForm, title: e.target.value })} style={inputStyle} />
+                  <textarea placeholder="訊息內容 (可包含換行)" value={waForm.message} onChange={(e) => setWaForm({ ...waForm, message: e.target.value })} rows={6} style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', marginBottom: '15px' }} />
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button onClick={saveWa} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}>保存</button>
+                    <button onClick={() => { setShowWaForm(false); setEditingWaId(null); }} style={{ backgroundColor: '#475569', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}>取消</button>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
+                {waTemplates.map((w) => (
+                  <div key={w.id} style={{ backgroundColor: '#1e293b', padding: '20px', borderRadius: '8px', border: '1px solid #334155', display: 'flex', flexDirection: 'column' }}>
+                    <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: 600, color: '#0ea5e9' }}>💬 {w.title}</h3>
+                    <p style={{ margin: '0 0 15px 0', fontSize: '14px', opacity: 0.85, lineHeight: 1.5, whiteSpace: 'pre-wrap', flex: 1 }}>{w.message}</p>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button onClick={() => sendWa(w.message)} style={{ flex: '1 1 auto', minWidth: '90px', padding: '8px', backgroundColor: '#25d366', border: 'none', color: 'white', cursor: 'pointer', borderRadius: '4px', fontSize: '13px', fontWeight: 600 }}>📤 發送</button>
+                      <button onClick={() => copyWa(w.message)} style={{ flex: '1 1 auto', minWidth: '70px', padding: '8px', backgroundColor: '#475569', border: 'none', color: 'white', cursor: 'pointer', borderRadius: '4px', fontSize: '13px', fontWeight: 500 }}>📋 複製</button>
+                      <button onClick={() => openEditWa(w)} style={{ flex: '1 1 auto', minWidth: '60px', padding: '8px', backgroundColor: '#334155', border: 'none', color: 'white', cursor: 'pointer', borderRadius: '4px', fontSize: '13px', fontWeight: 500 }}>編輯</button>
+                      <button onClick={() => deleteWa(w.id)} style={{ flex: '1 1 auto', minWidth: '60px', padding: '8px', backgroundColor: '#dc2626', border: 'none', color: 'white', cursor: 'pointer', borderRadius: '4px', fontSize: '13px', fontWeight: 500 }}>刪除</button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
